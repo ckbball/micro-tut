@@ -1,12 +1,12 @@
 FROM golang:1.11.0 as builder
 
-WORKDIR /go/src/github.com/ckbball/micro-tut/
+WORKDIR /go/src/github.com/ckbball/micro-tut/consignment-service
 
 COPY . .
 
 RUN go get -d . 
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo .
+RUN CGO_ENABLED=0 GOOS=linux go build -o consignment-service -a -installsuffix cgo main.go
 
 FROM alpine:latest
 
