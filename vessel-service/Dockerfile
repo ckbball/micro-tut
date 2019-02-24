@@ -5,8 +5,7 @@ WORKDIR /go/src/github.com/ckbball/micro-tut/vessel-service
 
 COPY . .
 
-RUN go get -u github.com/golang/dep/cmd/dep
-RUN dep init && dep ensure
+RUN go get -d . 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo .
 
 
