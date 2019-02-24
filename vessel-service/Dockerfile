@@ -6,7 +6,7 @@ WORKDIR /go/src/github.com/ckbball/micro-tut/vessel-service
 COPY . .
 
 RUN go get -d . 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo .
+RUN CGO_ENABLED=0 GOOS=linux go build -o vessel-service -a -installsuffix cgo main.go
 
 
 FROM alpine:latest
