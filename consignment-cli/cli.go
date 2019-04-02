@@ -6,13 +6,14 @@ import (
   "log"
   "os"
 
-  pb "github.com/ckbball/micro-tut/consignment-service/proto/consignment"
+  pb "github.com/EwanValentine/shippy/consignment-service/proto/consignment"
+  microclient "github.com/micro/go-micro/client"
+  "github.com/micro/go-micro/cmd"
+  "github.com/micro/go-micro/metadata"
   "golang.org/x/net/context"
-  "google.golang.org/grpc"
 )
 
 const (
-  address         = "localhost:50051"
   defaultFilename = "consignment.json"
 )
 
@@ -28,18 +29,18 @@ func parseFile(file string) (*pb.Consignment, error) {
 }
 
 func main() {
-  // Set up connection to server.
-  conn, err := grpc.Dial(address, grpc.WithInsecure())
-  if err != nil {
-    log.Fatalf("Did not connect: %v", err)
-  }
-  defer conn.Close()
-  client := pb.NewShippingServiceClient(conn)
+
+  cmd.Init()
+
+  // Create new greeter client
+  client := pb.NewShippingServiceClient("go.micro.srv.consignment", microclient.DefaultClient)
 
   // Contact the server and print out its response.
   file := defaultFilename
+  var token string
   if len(os.Args) > 1 {
     file = os.Args[1]
+    token = os.Args[2]
   }
 
   consignment, err := parseFile(file)
@@ -49,13 +50,17 @@ func main() {
 
   }
 
-  r, err := client.CreateConsignment(context.Background(), consignment)
+  ctx := metadata.NewContext(context.Background(), map[string]string{
+    "token": token,
+  })
+
+  r, err := client.CreateConsignment(ctx, consignment)
   if err != nil {
-    log.Fatalf("Could not greet: %v", err)
+    log.Fatalf("Could not create: %v", err)
   }
   log.Printf("Created: %t", r.Created)
 
-  getAll, err := client.GetConsignments(context.Background(), &pb.GetRequest{})
+  getAll, err := client.GetConsignments(ctx, &pb.GetRequest{})
   if err != nil {
     log.Fatalf("Could not list consignments: %v", err)
   }
