@@ -2,55 +2,47 @@
 package main
 
 import (
+  "context"
   "fmt"
   "log"
-
   // Import the generated protobuf code
-  vesselProto "github.com/EwanValentine/shippy/vessel-service/proto/vessel"
   pb "github.com/ckbball/micro-tut/consignment-service/proto/consignment"
-  micro "github.com/micro/go-micro"
+  vesselProto "github.com/ckbball/micro-tut/vessel-service/proto/vessel"
+  "github.com/micro/go-micro"
   "os"
 )
 
 const (
-  defaultHost = "localhost:27017"
+  defaultHost = "datastore:27017"
 )
 
 func main() {
 
-  // Database host from environment variables
-  host := os.Getenv("DB_HOST")
-
-  if host == "" {
-    host = defaultHost
-  }
-
-  session, err := CreateSession(host)
-
-  // Mgo creates a "master" session, we need to end that session before
-  // the main func closes.
-  defer session.Close()
-
-  if err != nil {
-    // error from CreateSession
-    log.Panicf("Could not connect to datastore with host %s - %v", host, err)
-  }
-
-  // Create a new service with some options
+  // Set up micro instance
   srv := micro.NewService(
-
-    // micro.Name must match package name given in protobuf def
-    micro.Name("go.micro.srv.consignment"),
-    micro.Version("latest"),
+    micro.Name("consignment.service"),
   )
 
-  vesselClient := vesselProto.NewVesselServiceClient("go.micro.srv.vessel", srv.Client())
-
-  // Init will parse command line flags
   srv.Init()
 
-  // Register handler
-  pb.RegisterShippingServiceHandler(srv.Server(), &service{session, vesselClient})
+  uri := os.Getenv("DB_HOST")
+  if uri == "" {
+    uri = defaultHost
+  }
+  client, err := CreateClient(uri)
+  if err != nil {
+    log.Panic(err)
+  }
+  defer client.Disconnect(context.TODO())
+
+  consignmentCollection := client.Database("shippy").Collection("consignments")
+
+  repository := &MongoRepository{consignmentCollection}
+  vesselClient := vessel.ProtoNewVesselServiceClient("shippy.service.client", srv.Client())
+  h := &handler{repository, vesselClient}
+
+  // Register handlers
+  pb.RegisterShippingServiceHandler(srv.Server(), h)
 
   // Run the server
   if err := srv.Run(); err != nil {
